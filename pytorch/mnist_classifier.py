@@ -6,17 +6,17 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
 
-# ---------- 1. 设置随机种子 ----------
+# 设置随机种子 
 torch.manual_seed(42)
 
-# ---------- 2. 数据预处理和加载 ----------
+# 数据预处理和加载 
 # 将图像从 (28,28) 展平为 784 维向量，并归一化到 [0,1]
 transform = transforms.Compose([
     transforms.ToTensor(),                     # 转为 [0,1] 的 Tensor
     transforms.Lambda(lambda x: x.view(-1))   # 展平为 784 维
 ])
 
-# 下载训练集和测试集（若已下载则直接加载）
+# 下载训练集和测试集
 train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 test_dataset  = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
@@ -25,7 +25,7 @@ batch_size = 64
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-# ---------- 3. 定义网络结构 ----------
+# 定义网络结构 
 class SimpleNN(nn.Module):
     def __init__(self):
         super().__init__()
@@ -41,11 +41,11 @@ class SimpleNN(nn.Module):
 
 model = SimpleNN()
 
-# ---------- 4. 损失函数和优化器 ----------
+# 损失函数和优化器
 criterion = nn.CrossEntropyLoss()          # 交叉熵损失（包含 softmax）
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# ---------- 5. 训练循环 ----------
+# 训练循环 
 num_epochs = 10
 train_losses = []
 for epoch in range(num_epochs):
@@ -67,7 +67,7 @@ for epoch in range(num_epochs):
     train_losses.append(avg_loss)
     print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
 
-# ---------- 6. 测试准确率 ----------
+# 测试准确率 
 model.eval()
 correct = 0
 total = 0
@@ -81,7 +81,7 @@ with torch.no_grad():
 accuracy = 100 * correct / total
 print(f"\n测试准确率: {accuracy:.2f}%")
 
-# ---------- 7. 可视化部分预测结果 ----------
+#  可视化部分预测结果 
 # 随机取 6 张测试图像
 data_iter = iter(test_loader)
 images, labels = next(data_iter)
@@ -90,7 +90,7 @@ with torch.no_grad():
     outputs = model(images)
     _, preds = torch.max(outputs, 1)
 
-# 显示图像（需将展平数据还原为 28x28）
+# 显示图像（这里需将展平数据还原为 28x28）
 fig, axes = plt.subplots(2, 3, figsize=(8, 6))
 axes = axes.flatten()
 for i in range(6):
@@ -102,7 +102,7 @@ for i in range(6):
 plt.tight_layout()
 plt.show()
 
-# ---------- 8. 绘制训练损失曲线 ----------
+# 绘制训练损失曲线
 plt.figure(figsize=(6, 4))
 plt.plot(train_losses, marker='o')
 plt.xlabel('Epoch')

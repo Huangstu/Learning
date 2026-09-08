@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ---------- 1. 生成非线性数据（二次函数 + 噪声） ----------
+# 生成非线性数据（二次函数 + 噪声） 
 torch.manual_seed(42)
 num_samples = 150
 x = torch.rand(num_samples, 1) * 6 - 3          # x 在 [-3, 3)
@@ -15,7 +15,7 @@ X_poly = torch.cat([torch.ones(num_samples, 1), x, x**2], dim=1)
 # 计算真实 y，加噪声
 y = X_poly @ torch.tensor(true_coeffs).reshape(-1, 1) + torch.randn(num_samples, 1) * 0.3
 
-# ---------- 2. 定义模型（线性层，输入维度为3） ----------
+# 定义模型（线性层，输入维度为3） 
 class PolyRegressionModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -26,11 +26,11 @@ class PolyRegressionModel(nn.Module):
 
 model = PolyRegressionModel()
 
-# ---------- 3. 损失函数和优化器 ----------
+#  损失函数和优化器 
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.05)  # Adam 收敛更快
 
-# ---------- 4. 训练循环 ----------
+# 训练循环 
 epochs = 800
 for epoch in range(epochs):
     y_pred = model(X_poly)          # 直接输入特征矩阵
@@ -43,7 +43,7 @@ for epoch in range(epochs):
     if (epoch + 1) % 100 == 0:
         print(f'Epoch {epoch+1}/{epochs}, Loss: {loss.item():.6f}')
 
-# ---------- 5. 查看学到的参数 ----------
+# 查看学到的参数 
 # 注意模型自带一个偏置（bias），而我们数据中已经包含常数项列（全1），
 # 所以最终预测 = w1*1 + w2*x + w3*x^2 + bias。
 # 为了方便对比真实系数，将 bias 合并到常数项系数中。
@@ -58,11 +58,11 @@ final_coeffs[0] += b_learned
 print(f"合并后的系数 [常数, x, x^2]: {final_coeffs}")
 print(f"真实系数: {true_coeffs}")
 
-# ---------- 6. 保存模型 ----------
+# 保存模型 
 torch.save(model.state_dict(), 'poly_model.pth')
 print("\n模型已保存为 poly_model.pth")
 
-# ---------- 7. 加载模型并预测新数据 ----------
+# 加载模型并预测新数据 
 new_model = PolyRegressionModel()
 new_model.load_state_dict(torch.load('poly_model.pth'))
 new_model.eval()   # 切换到评估模式（本例无 dropout，但好习惯）
@@ -75,7 +75,7 @@ with torch.no_grad():
     pred = new_model(X_new)
 print(f"\n预测 x=1.5 时，y = {pred.item():.4f}")
 
-# ---------- 8. 可视化拟合曲线 ----------
+# 可视化拟合曲线 
 plt.figure(figsize=(8, 5))
 plt.scatter(x.numpy(), y.numpy(), s=10, label='真实数据')
 with torch.no_grad():
