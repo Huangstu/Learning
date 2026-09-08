@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ---------- 1. 生成模拟数据 ----------
+# 生成模拟数据 
 torch.manual_seed(42)          # 固定随机种子
 true_w = 2.0                   # 真实斜率
 true_b = 1.0                   # 真实截距
@@ -13,7 +13,7 @@ x = torch.rand(num_samples, 1) * 10          # x 在 [0,10) 均匀分布
 noise = torch.randn(num_samples, 1) * 0.5    # 高斯噪声
 y = true_w * x + true_b + noise              # y = 2x + 1 + 噪声
 
-# ---------- 2. 定义模型 ----------
+# 定义模型 
 class LinearRegressionModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -24,11 +24,11 @@ class LinearRegressionModel(nn.Module):
 
 model = LinearRegressionModel()
 
-# ---------- 3. 定义损失函数和优化器 ----------
+# 定义损失函数和优化器 
 criterion = nn.MSELoss()                     # 均方误差损失
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01)  # 随机梯度下降
 
-# ---------- 4. 训练循环 ----------
+# 训练循环 
 num_epochs = 500
 losses = []
 
@@ -47,13 +47,13 @@ for epoch in range(num_epochs):
     if (epoch+1) % 50 == 0:
         print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
 
-# ---------- 5. 打印最终参数 ----------
+# 打印最终参数 
 w_learned = model.linear.weight.item()
 b_learned = model.linear.bias.item()
 print(f'\n真实: w={true_w}, b={true_b}')
 print(f'学习: w={w_learned:.4f}, b={b_learned:.4f}')
 
-# ---------- 6. 可视化 ----------
+# 可视化 
 plt.figure(figsize=(8,5))
 plt.scatter(x.numpy(), y.numpy(), s=10, label='真实数据')
 with torch.no_grad():
