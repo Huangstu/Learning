@@ -1,62 +1,65 @@
 import torch
-import torch.nn as nn
+import os
 from PIL import Image
 from torchvision import transforms
+from train_cifar10 import SimpleCNN  # 从之前的代码中导入模型类
 
-# 1. 定义模型，必须与训练时结构一致
-class SimpleCNN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(64 * 8 * 8, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 10)
-        self.dropout = nn.Dropout(0.5)
+# 1. 定义 CIFAR-10 的10个类别标签,按顺序给出
+classes = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
+           'dog', 'frog', 'horse', 'ship', 'truck']
 
-    def forward(self, x):
-        x = self.pool(nn.functional.relu(self.conv1(x)))
-        x = self.pool(nn.functional.relu(self.conv2(x)))
-        x = x.view(-1, 64 * 8 * 8)
-        x = nn.functional.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = nn.functional.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.fc3(x)
-        return x
-
-# 2. 加载模型参数 
+# 2. 设置设备，与训练保持一致
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = SimpleCNN().to(device)
-model.load_state_dict(torch.load('best_model.pth', map_location=device))
-model.eval()
-print("模型加载成功！")
 
-# 3. 数据预处理 
+# 3. 加载模型结构并加载保存好的权重
+model = SimpleCNN().to(device)
+#model.load_state_dict(torch.load('best_model.pth', map_location=device))
+model.load_state_dict(torch.load('best_model.pth', map_location=device, weights_only=True))
+model.eval()  # 评估模式
+
+# 4. 定义预处理（必须与训练时测试集的 transform 完全一致，不能有增强！）
+# 对于单张图片，我们需要手动调整尺寸
 transform = transforms.Compose([
-    transforms.Resize(32),
+    transforms.Resize((32, 32)),  # 保持一致
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225])
 ])
 
-#  4. 类别标签 -
-classes = ('airplane', 'automobile', 'bird', 'cat', 'deer',
-           'dog', 'frog', 'horse', 'ship', 'truck')
-
-#  5. 预测函数 
+# 5. 定义预测函数
 def predict_image(image_path):
-    img = Image.open(image_path).convert('RGB')
-    img_tensor = transform(img).unsqueeze(0).to(device)   # 增加 batch 维度
+    try:
+        # 打开图片，并强制转换为RGB（防止遇到RGBA四通道或灰度图报错）
+        img = Image.open(image_path).convert('RGB')
+    except FileNotFoundError:
+        print(f"找不到图片：{image_path}")
+        return
+
+    # 预处理
+    img_tensor = transform(img).unsqueeze(0).to(device) 
+    # .unsqueeze(0) 是为了增加一个 Batch 维度，变成 [1, 3, 32, 32] 的形状
+
+    # 使用 torch.no_grad() 关闭梯度计算，节省显存并加速
     with torch.no_grad():
-        outputs = model(img_tensor)
-        _, predicted = torch.max(outputs, 1)
-    return classes[predicted.item()]
+        outputs = model(img_tensor)  # 获得10个类别的分数
+        _, predicted = torch.max(outputs, 1)  # 获得最大分数的索引（预测类别）
+        prob = torch.nn.functional.softmax(outputs, dim=1)[0] * 100 # 计算置信度概率
 
+    pred_idx = predicted.item()
+    print(f"\n图片路径: {image_path}")
+    print(f"预测类别: {classes[pred_idx]} (索引: {pred_idx})")
+    print(f"置信度: {prob[pred_idx].item():.2f}%")
 
-if __name__ == "__main__":
-    # 预测 'test.jpg' 
-    img_path = 'test.jpg'
-    result = predict_image(img_path)
-    print(f"预测结果: {result}")
+#  运行测试
+if __name__ == '__main__':
+
+    # 定义存放图片的目录
+    image_dir = './test_images'      
+    # 定义图片文件名
+    image_name = '_1.jpg' 
+    
+    # 使用 os.path.join 拼接目录和文件名，自动处理斜杠
+    image_path = os.path.join(image_dir, image_name)
+    
+    print("开始推理...")
+    predict_image(image_path)

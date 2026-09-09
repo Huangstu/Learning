@@ -1,3 +1,11 @@
 testfile/
 test.py
+test_images/
 picklefile/
+logs/
+datasets/
+data/
+runs/
+.vscode/
+.venv/
+help/
