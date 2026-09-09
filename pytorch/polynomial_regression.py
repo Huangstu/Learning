@@ -3,6 +3,10 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+plt.rcParams['font.sans-serif'] = ['SimHei']  
+plt.rcParams['axes.unicode_minus'] = False    
+
 # 生成非线性数据（二次函数 + 噪声） 
 torch.manual_seed(42)
 num_samples = 150
@@ -43,7 +47,7 @@ for epoch in range(epochs):
     if (epoch + 1) % 100 == 0:
         print(f'Epoch {epoch+1}/{epochs}, Loss: {loss.item():.6f}')
 
-# 查看学到的参数 
+
 # 注意模型自带一个偏置（bias），而我们数据中已经包含常数项列（全1），
 # 所以最终预测 = w1*1 + w2*x + w3*x^2 + bias。
 # 为了方便对比真实系数，将 bias 合并到常数项系数中。
@@ -65,7 +69,7 @@ print("\n模型已保存为 poly_model.pth")
 # 加载模型并预测新数据 
 new_model = PolyRegressionModel()
 new_model.load_state_dict(torch.load('poly_model.pth'))
-new_model.eval()   # 切换到评估模式（本例无 dropout，但好习惯）
+new_model.eval()   # 切换到评估模式
 
 # 预测 x = 1.5 时的 y
 x_new = torch.tensor([[1.5]])

@@ -3,6 +3,10 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+plt.rcParams['font.sans-serif'] = ['SimHei']   # 设置字体为黑体
+plt.rcParams['axes.unicode_minus'] = False     # 解决负号显示异常
+
 # 生成模拟数据 
 torch.manual_seed(42)          # 固定随机种子
 true_w = 2.0                   # 真实斜率
@@ -29,7 +33,7 @@ criterion = nn.MSELoss()                     # 均方误差损失
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01)  # 随机梯度下降
 
 # 训练循环 
-num_epochs = 500
+num_epochs = 100
 losses = []
 
 for epoch in range(num_epochs):

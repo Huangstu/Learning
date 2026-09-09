@@ -7,14 +7,7 @@
 - 特点：**动态计算图**，构建和调试更灵活。
 
 ##### 1.2 PyTorch 安装
-**CPU 版本**
-```bash
-pip install torch torchvision torchaudio
-```
-**CUDA 11.8 版本**
-```bash
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-```
+
 **验证安装**
 ```python
 import torch

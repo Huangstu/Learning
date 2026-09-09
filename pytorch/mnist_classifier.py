@@ -6,6 +6,9 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+plt.rcParams['font.sans-serif'] = ['SimHei']   # 设置字体为黑体
+
 # 设置随机种子 
 torch.manual_seed(42)
 
