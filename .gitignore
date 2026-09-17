@@ -9,4 +9,5 @@ runs/
 .vscode/
 .venv/
 help/
+temp/
 __pycache__/
