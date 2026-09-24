@@ -11,3 +11,6 @@ runs/
 help/
 temp/
 __pycache__/
+__MACOSX/
+*.zip
+.ipynb_checkpoints/
