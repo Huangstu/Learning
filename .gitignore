@@ -3,7 +3,6 @@ test.py
 test_images/
 picklefile/
 logs/
-datasets/
 data/
 runs/
 .vscode/
@@ -12,5 +11,6 @@ help/
 temp/
 __pycache__/
 __MACOSX/
+ignore/
 *.zip
 .ipynb_checkpoints/
