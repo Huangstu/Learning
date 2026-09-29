@@ -12,5 +12,6 @@ temp/
 __pycache__/
 __MACOSX/
 ignore/
+coco_captioning/
 *.zip
 .ipynb_checkpoints/
