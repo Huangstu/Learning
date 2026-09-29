@@ -4,6 +4,7 @@ test_images/
 picklefile/
 logs/
 data/
+datasets/
 runs/
 .vscode/
 .venv/
