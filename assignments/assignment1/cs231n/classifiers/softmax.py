@@ -30,12 +30,16 @@ def softmax_loss_naive(W, X, y, reg):
     num_classes = W.shape[1]
     num_train = X.shape[0]
     for i in range(num_train):
+
+        # 前向传播
         scores = X[i].dot(W)
 
         # compute the probabilities in numerically stable way
+        # 防溢出
         scores -= np.max(scores)
         p = np.exp(scores)
         p /= p.sum()  # normalize
+        # p：C 个标签的预测概率
         logp = np.log(p)
         
         loss -= logp[y[i]]  # negative log probability is the loss
