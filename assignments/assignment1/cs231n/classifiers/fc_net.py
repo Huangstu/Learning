@@ -123,6 +123,8 @@ class TwoLayerNet(object):
         loss, dScores = softmax_loss(scores, y)
         
         # 加上 L2 正则化项，系数为 0.5，对应权重 W1 和 W2
+        # L2 正则化项的梯度为 reg * W
+        # 惩罚大权重，防止过拟合
         loss += 0.5 * self.reg * (np.sum(self.params['W1']**2) + np.sum(self.params['W2']**2))
         
         # 第二层的反向传播：affine_backward 返回 dHidden（对隐藏层的梯度）、dW2、db2
@@ -231,6 +233,22 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zeros.                               #
         ############################################################################
 
+        # 构建每一层的维度列表：[input_dim, hidden_dims[0], hidden_dims[1], ..., num_classes]
+        dims = [input_dim] + hidden_dims + [num_classes]
+        
+        # 循环遍历每一层（从第 1 层到第 num_layers 层）
+        for i in range(1, self.num_layers + 1):
+            # 初始化权重 W{i}，形状为 (dims[i-1], dims[i])
+            self.params['W' + str(i)] = np.random.randn(dims[i-1], dims[i]) * weight_scale
+            # 初始化偏置 b{i}，形状为 (dims[i],)，全为 0
+            self.params['b' + str(i)] = np.zeros(dims[i])
+            
+            # 如果是隐藏层，且启用了归一化（batch norm 或 layer norm）
+            if self.normalization is not None and i < self.num_layers:
+                # 初始化缩放参数 gamma{i}，全为 1
+                self.params['gamma' + str(i)] = np.ones(dims[i])
+                # 初始化平移参数 beta{i}，全为 0
+                self.params['beta' + str(i)] = np.zeros(dims[i])
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -301,6 +319,36 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
 
+        caches = []
+        out = X
+        
+        # 遍历前 L-1 层（隐藏层）
+        for i in range(1, self.num_layers):
+            # 1. Affine 层
+            out, cache_affine = affine_forward(out, self.params['W' + str(i)], self.params['b' + str(i)])
+            caches.append(cache_affine)
+            
+            # 2. 归一化层（可选）
+            if self.normalization == 'batchnorm':
+                out, cache_bn = batchnorm_forward(out, self.params['gamma' + str(i)], self.params['beta' + str(i)], self.bn_params[i-1])
+                caches.append(cache_bn)
+            elif self.normalization == 'layernorm':
+                out, cache_ln = layernorm_forward(out, self.params['gamma' + str(i)], self.params['beta' + str(i)], self.bn_params[i-1])
+                caches.append(cache_ln)
+                
+            # 3. ReLU 层
+            out, cache_relu = relu_forward(out)
+            caches.append(cache_relu)
+            
+            # 4. Dropout 层（可选）
+            if self.use_dropout:
+                out, cache_drop = dropout_forward(out, self.dropout_param)
+                caches.append(cache_drop)
+
+        # 最后一层（第 L 层）：只有 Affine 层，输出 scores
+        scores, cache_affine = affine_forward(out, self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
+        caches.append(cache_affine)
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -323,6 +371,37 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
+
+        # 计算 Softmax 损失和 dScores
+        loss, dout = softmax_loss(scores, y)
+        
+        # 加上 L2 正则化损失（只对 W 正则化，不对 b、gamma、beta 正则化）
+        for i in range(1, self.num_layers + 1):
+            W = self.params['W' + str(i)]
+            loss += 0.5 * self.reg * np.sum(W * W)
+
+        # 逆序遍历所有层（从第 L 层到第 1 层）
+        for i in range(self.num_layers, 0, -1):
+            # 1. Affine 反向传播
+            dout, grads['W' + str(i)], grads['b' + str(i)] = affine_backward(dout, caches.pop())
+            # 加上正则化梯度
+            grads['W' + str(i)] += self.reg * self.params['W' + str(i)]
+            
+            # 如果不是第一层，还需要继续反向传播
+            if i > 1:
+                # 2. Dropout 反向传播（可选）
+                if self.use_dropout:
+                    dout = dropout_backward(dout, caches.pop())
+                
+                # 3. ReLU 反向传播
+                dout = relu_backward(dout, caches.pop())
+                
+                # 4. 归一化层反向传播（可选）
+                if self.normalization == 'batchnorm':
+                    dout, grads['gamma' + str(i-1)], grads['beta' + str(i-1)] = batchnorm_backward_alt(dout, caches.pop())
+                elif self.normalization == 'layernorm':
+                    dout, grads['gamma' + str(i-1)], grads['beta' + str(i-1)] = layernorm_backward(dout, caches.pop())
+
 
         ############################################################################
         #                             END OF YOUR CODE                             #
