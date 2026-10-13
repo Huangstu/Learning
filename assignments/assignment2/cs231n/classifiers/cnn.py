@@ -62,6 +62,23 @@ class ThreeLayerConvNet(object):
         # the start of the loss() function to see how that happens.                #
         ############################################################################
 
+        C, H, W = input_dim
+        # 1.卷积层。输出通道数 num_filters，滤波器尺寸 filter_size x filter_size
+        # 权重形状：(F, C, HH, WW)，偏置形状：(F,)
+        self.params['W1'] = np.random.randn(num_filters, C, filter_size, filter_size) * weight_scale
+        self.params['b1'] = np.zeros(num_filters)
+
+        # 假设卷积层保持了 H、W 不变
+        # 池化层 2x2 stride 2，输出空间尺寸减半
+        pool_out_dim = num_filters * (H // 2) * (W // 2)
+
+        # 2.隐藏层全连接
+        self.params['W2'] = np.random.randn(pool_out_dim, hidden_dim) * weight_scale
+        self.params['b2'] = np.zeros(hidden_dim)
+
+        # 3.输出层全连接
+        self.params['W3'] = np.random.randn(hidden_dim, num_classes) * weight_scale
+        self.params['b3'] = np.zeros(num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -97,6 +114,14 @@ class ThreeLayerConvNet(object):
         # cs231n/layer_utils.py in your implementation (already imported).         #
         ############################################################################
 
+        # 1. 卷积 -> ReLU -> 池化（组合层）
+        out1, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+
+        # 2. 全连接 -> ReLU（组合层）
+        out2, cache2 = affine_relu_forward(out1, W2, b2)
+
+        # 3. 全连接 -> 输出 scores
+        scores, cache3 = affine_forward(out2, W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -115,7 +140,22 @@ class ThreeLayerConvNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
+        
+        # 1. Softmax 损失和 dScores
+        loss, dout = softmax_loss(scores, y)
 
+        # 2. 加上 L2 正则化损失
+        loss += 0.5 * self.reg * (np.sum(W1**2) + np.sum(W2**2) + np.sum(W3**2))
+
+        # 3. 反向传播
+        dout, grads['W3'], grads['b3'] = affine_backward(dout, cache3)
+        dout, grads['W2'], grads['b2'] = affine_relu_backward(dout, cache2)
+        _, grads['W1'], grads['b1'] = conv_relu_pool_backward(dout, cache1)
+
+        # 4. 对权重加上 L2 正则化梯度
+        grads['W1'] += self.reg * W1
+        grads['W2'] += self.reg * W2
+        grads['W3'] += self.reg * W3
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
