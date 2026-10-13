@@ -61,7 +61,8 @@ def affine_backward(dout, cache):
     ###########################################################################
     x_reshaped = x.reshape(x.shape[0], -1)
     
-    # w 的梯度：X^T * dout，形状为 (D, N) @ (N, M) = (D, M)
+    # w 的梯度与w 维度一致
+    # w ：X^T * dout，形状为 (D, N) @ (N, M) = (D, M)
     dw = x_reshaped.T.dot(dout)
     
     # b 的梯度：dout 沿批次维度求和，形状为 (M,)
@@ -194,7 +195,25 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # Referencing the original paper (https://arxiv.org/abs/1502.03167)   #
         # might prove to be helpful.                                          #
         #######################################################################
-        pass
+
+        # 1. 计算当前 batch 的均值和方差
+        sample_mean = np.mean(x, axis=0)
+        sample_var = np.var(x, axis=0)
+        
+        # 2. 归一化
+        std = np.sqrt(sample_var + eps)
+        x_norm = (x - sample_mean) / std
+        
+        # 3. 缩放和平移
+        out = gamma * x_norm + beta
+        
+        # 4. 更新 running 均值与方差
+        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+        running_var = momentum * running_var + (1 - momentum) * sample_var
+        
+        # 5. 保存 cache 供反向传播使用
+        cache = (x, x_norm, sample_mean, sample_var, gamma, beta, eps)
+
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -205,7 +224,11 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
-        pass
+
+        # 测试时直接使用 running 均值与方差
+        x_norm = (x - running_mean) / np.sqrt(running_var + eps)
+        out = gamma * x_norm + beta
+
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -244,6 +267,26 @@ def batchnorm_backward(dout, cache):
     # might prove to be helpful.                                              #
     ###########################################################################
 
+    x, x_norm, sample_mean, sample_var, gamma, beta, eps = cache
+    N, D = dout.shape
+    
+    # 1. dbeta 和 dgamma (直接按列求和)
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(dout * x_norm, axis=0)
+    
+    # 2. 反向传播计算 dx
+    # 计算 dx_norm: dL/dx_norm = dout * gamma
+    dx_norm = dout * gamma
+    
+    # 计算 dvar: dL/dvar = sum(dx_norm * (x - sample_mean) * -0.5 * (sample_var + eps)^(-3/2))
+    dvar = np.sum(dx_norm * (x - sample_mean) * -0.5 * (sample_var + eps)**(-1.5), axis=0)
+    
+    # 计算 dmean: dL/dmean = sum(dx_norm * -1 / sqrt(sample_var + eps)) + dvar * sum(-2 * (x - sample_mean)) / N
+    dmean = np.sum(dx_norm * -1.0 / np.sqrt(sample_var + eps), axis=0) + dvar * np.sum(-2.0 * (x - sample_mean), axis=0) / N
+    
+    # 计算 dx: dx = dx_norm / sqrt(sample_var + eps) + dvar * 2 * (x - sample_mean) / N + dmean / N
+    dx = dx_norm / np.sqrt(sample_var + eps) + dvar * 2.0 * (x - sample_mean) / N + dmean / N
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -274,6 +317,15 @@ def batchnorm_backward_alt(dout, cache):
     # should be able to compute gradients with respect to the inputs in a     #
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
+
+    x, x_norm, sample_mean, sample_var, gamma, beta, eps = cache
+    N, D = dout.shape
+    
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(dout * x_norm, axis=0)
+    
+    # 化简后的数学公式 (...)
+    dx = (1. / N) * gamma * (sample_var + eps)**(-0.5) * (N * dout - np.sum(dout, axis=0) - x_norm * np.sum(dout * x_norm, axis=0))
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -317,6 +369,21 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
 
+    # 转置 x，使得特征维度变成 axis=0
+    x_T = x.T
+    
+    # 直接套用 batchnorm_forward 的代码
+    # 此时的 batch 维度变成了 D，特征维度变成了 N
+    # 所以 gamma 和 beta 需要广播到 (D, N)，但它们原本是 (D,)，这刚好能广播
+    out_T, cache_T = batchnorm_forward(x_T, gamma, beta, ln_param)
+    
+    # 把结果转置回来
+    out = out_T.T
+    
+    # 需要把 cache 也处理好，以便反向传播使用
+    # 通常需要重新打包 cache，因为 batchnorm 的 cache 存的是转置后的 x
+    cache = (x, x_T, gamma, beta, cache_T) 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -348,6 +415,16 @@ def layernorm_backward(dout, cache):
     # still apply!                                                            #
     ###########################################################################
 
+    x, x_T, gamma, beta, cache_T = cache
+    
+    # 转置 dout
+    dout_T = dout.T
+    
+    # 直接套用 batchnorm_backward
+    dx_T, dgamma, dbeta = batchnorm_backward(dout_T, cache_T)
+    
+    # 把 dx 转置回来
+    dx = dx_T.T
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -392,7 +469,9 @@ def dropout_forward(x, dropout_param):
         # TODO: Implement training phase forward pass for inverted dropout.   #
         # Store the dropout mask in the mask variable.                        #
         #######################################################################
-        pass
+        # 生成掩码，保留概率为 p，并除以 p（Inverted Dropout）
+        mask = (np.random.rand(*x.shape) < p) / p
+        out = x * mask
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -400,7 +479,8 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # TODO: Implement the test phase forward pass for inverted dropout.   #
         #######################################################################
-        pass
+        # 测试时直接返回输入
+        out = x
         #######################################################################
         #                            END OF YOUR CODE                         #
         #######################################################################
@@ -427,7 +507,8 @@ def dropout_backward(dout, cache):
         #######################################################################
         # TODO: Implement training phase backward pass for inverted dropout   #
         #######################################################################
-        pass
+        # 将上游梯度与掩码相乘
+        dx = dout * mask
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
