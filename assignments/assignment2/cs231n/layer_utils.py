@@ -102,3 +102,39 @@ def conv_relu_pool_backward(dout, cache):
     da = relu_backward(ds, relu_cache)
     dx, dw, db = conv_backward_fast(da, conv_cache)
     return dx, dw, db
+
+
+def affine_bn_relu_forward(x, w, b, gamma, beta, bn_param):
+    """组合层：Affine -> BatchNorm -> ReLU"""
+    a, fc_cache = affine_forward(x, w, b)
+    a, bn_cache = batchnorm_forward(a, gamma, beta, bn_param)
+    out, relu_cache = relu_forward(a)
+    cache = (fc_cache, bn_cache, relu_cache)
+    return out, cache
+
+
+def affine_bn_relu_backward(dout, cache):
+    """组合层反向：ReLU -> BatchNorm -> Affine"""
+    fc_cache, bn_cache, relu_cache = cache
+    da = relu_backward(dout, relu_cache)
+    da, dgamma, dbeta = batchnorm_backward_alt(da, bn_cache)
+    dx, dw, db = affine_backward(da, fc_cache)
+    return dx, dw, db, dgamma, dbeta
+
+
+def affine_ln_relu_forward(x, w, b, gamma, beta, ln_param):
+    """组合层：Affine -> LayerNorm -> ReLU"""
+    a, fc_cache = affine_forward(x, w, b)
+    a, ln_cache = layernorm_forward(a, gamma, beta, ln_param)
+    out, relu_cache = relu_forward(a)
+    cache = (fc_cache, ln_cache, relu_cache)
+    return out, cache
+
+
+def affine_ln_relu_backward(dout, cache):
+    """组合层反向：ReLU -> LayerNorm -> Affine"""
+    fc_cache, ln_cache, relu_cache = cache
+    da = relu_backward(dout, relu_cache)
+    da, dgamma, dbeta = layernorm_backward(da, ln_cache)
+    dx, dw, db = affine_backward(da, fc_cache)
+    return dx, dw, db, dgamma, dbeta
