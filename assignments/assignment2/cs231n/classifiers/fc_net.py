@@ -73,6 +73,19 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zeros.                               #
         ############################################################################
 
+        # 构建每一层的维度列表：[input_dim, hidden_dims[0], ..., num_classes]
+        dims = [input_dim] + hidden_dims + [num_classes]
+
+        # 循环初始化每一层的权重和偏置
+        for i in range(1, self.num_layers + 1):
+            self.params['W' + str(i)] = np.random.randn(dims[i-1], dims[i]) * weight_scale
+            self.params['b' + str(i)] = np.zeros(dims[i])
+
+            # 对于隐藏层且启用了归一化，还需要初始化 gamma 和 beta
+            if self.normalization is not None and i < self.num_layers:
+                self.params['gamma' + str(i)] = np.ones(dims[i])
+                self.params['beta' + str(i)] = np.zeros(dims[i])
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -143,6 +156,37 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
 
+        caches = []
+        out = X
+
+        # 前 L-1 层：Affine -> [归一化] -> ReLU -> [Dropout]
+        for i in range(1, self.num_layers):
+            W = self.params['W' + str(i)]
+            b = self.params['b' + str(i)]
+
+            if self.normalization == 'batchnorm':
+                gamma = self.params['gamma' + str(i)]
+                beta = self.params['beta' + str(i)]
+                out, cache = affine_bn_relu_forward(out, W, b, gamma, beta, self.bn_params[i-1])
+            elif self.normalization == 'layernorm':
+                gamma = self.params['gamma' + str(i)]
+                beta = self.params['beta' + str(i)]
+                out, cache = affine_ln_relu_forward(out, W, b, gamma, beta, self.bn_params[i-1])
+            else:
+                out, cache = affine_relu_forward(out, W, b)
+            caches.append(cache)
+
+            # Dropout 层（可选）
+            if self.use_dropout:
+                out, drop_cache = dropout_forward(out, self.dropout_param)
+                caches.append(drop_cache)
+
+        # 最后一层：只有 Affine
+        W = self.params['W' + str(self.num_layers)]
+        b = self.params['b' + str(self.num_layers)]
+        scores, cache = affine_forward(out, W, b)
+        caches.append(cache)
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -165,6 +209,39 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
+
+        # 1. 计算 Softmax 损失和 dScores
+        loss, dout = softmax_loss(scores, y)
+
+        # 2. 加上 L2 正则化损失（只对权重 W，不对 gamma/beta/b 做正则化）
+        for i in range(1, self.num_layers + 1):
+            W = self.params['W' + str(i)]
+            loss += 0.5 * self.reg * np.sum(W * W)
+
+        # 3. 最后一层 Affine 反向传播
+        dout, grads['W' + str(self.num_layers)], grads['b' + str(self.num_layers)] = \
+            affine_backward(dout, caches.pop())
+        grads['W' + str(self.num_layers)] += self.reg * self.params['W' + str(self.num_layers)]
+
+        # 4. 逆序遍历前 L-1 层
+        for i in range(self.num_layers - 1, 0, -1):
+            # 先经过 Dropout 反向（如果启用了）
+            if self.use_dropout:
+                dout = dropout_backward(dout, caches.pop())
+
+            # 再经过 [归一化+ReLU+Affine] 组合层反向
+            if self.normalization == 'batchnorm':
+                dout, grads['W' + str(i)], grads['b' + str(i)], grads['gamma' + str(i)], grads['beta' + str(i)] = \
+                    affine_bn_relu_backward(dout, caches.pop())
+            elif self.normalization == 'layernorm':
+                dout, grads['W' + str(i)], grads['b' + str(i)], grads['gamma' + str(i)], grads['beta' + str(i)] = \
+                    affine_ln_relu_backward(dout, caches.pop())
+            else:
+                dout, grads['W' + str(i)], grads['b' + str(i)] = \
+                    affine_relu_backward(dout, caches.pop())
+
+            # 对权重 W 加上 L2 正则化梯度（不对 gamma/beta 正则化）
+            grads['W' + str(i)] += self.reg * self.params['W' + str(i)]
 
         ############################################################################
         #                             END OF YOUR CODE                             #
