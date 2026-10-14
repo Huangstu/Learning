@@ -57,11 +57,13 @@ class CaptioningRNN:
         self.params["W_embed"] /= 100
 
         # Initialize CNN -> hidden state projection parameters
+        # 把输入的由CNN提取的特征转换成隐藏层h0
         self.params["W_proj"] = torch.randn(input_dim, hidden_dim)
         self.params["W_proj"] /= np.sqrt(input_dim)
         self.params["b_proj"] = torch.zeros(hidden_dim)
 
         # Initialize parameters for the RNN
+        # LSTM 的每个时间步需要计算四个门
         dim_mul = {"lstm": 4, "rnn": 1}[cell_type]
         self.params["Wx"] = torch.randn(wordvec_dim, dim_mul * hidden_dim)
         self.params["Wx"] /= np.sqrt(wordvec_dim)
@@ -142,6 +144,29 @@ class CaptioningRNN:
         # You also don't have to implement the backward pass.                      #
         ############################################################################
 
+        # (1) 图像特征投影到初始隐藏状态
+        # features: (N, D), W_proj: (D, H), b_proj: (H,)  ->  h0: (N, H)
+        h0 = features @ W_proj + b_proj
+
+        # (2) 词嵌入，把 captions_in 从索引转成向量：形状 (N, T, W)  
+        # captions_in: (N, T), W_embed: (V, W)  ->  x: (N, T, W)
+        x = W_embed[captions_in]
+
+        # (3) RNN 前向传播
+        # x: (N, T, W), h0: (N, H)  ->  h: (N, T, H)
+        if self.cell_type == "rnn":
+            h = rnn_forward(x, h0, Wx, Wh, b)
+        # LSTM 
+
+        # (4) 时序仿射
+        # h: (N, T, H), W_vocab: (H, V), b_vocab: (V,)  ->  scores: (N, T, V)
+        scores = temporal_affine_forward(h, W_vocab, b_vocab)
+
+        # (5) 时序 Softmax 损失
+        loss = temporal_softmax_loss(scores, captions_out, mask)
+
+
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -205,7 +230,35 @@ class CaptioningRNN:
         # NOTE: we are still working over minibatches in this function. Also if   #
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
+        # 1. 用图像特征计算初始隐藏状态
+        h = features @ W_proj + b_proj          # (N, H)
 
+        # 如果是 LSTM，还需要初始化细胞状态 c
+        if self.cell_type == "lstm":
+            c = torch.zeros_like(h)             # (N, H)
+
+        # 2. 第一个输入词是 <START>
+        current_word = self._start * torch.ones(N, dtype=torch.long)  # (N,)
+
+        # 3. 逐个时间步生成单词
+        for t in range(max_length):
+            # (1) 词嵌入：把当前单词 ID 转成词向量
+            x = W_embed[current_word]           # (N, W)
+
+            # (2) RNN 单步：根据当前输入和上一隐藏状态计算新隐藏状态
+            if self.cell_type == "rnn":
+                h = rnn_step_forward(x, h, Wx, Wh, b)      # (N, H)
+            elif self.cell_type == "lstm":
+                h, c = lstm_step_forward(x, h, c, Wx, Wh, b)  # (N, H), (N, H)
+
+            # (3) 计算词汇表分数
+            scores = h @ W_vocab + b_vocab      # (N, V)
+
+            # (4) 选出分数最高的单词（greedy 策略）
+            current_word = torch.argmax(scores, dim=1)      # (N,)
+
+            # (5) 存入输出
+            captions[:, t] = current_word
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

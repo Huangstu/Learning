@@ -68,7 +68,11 @@ def image_from_url(url):
         with open(fname, "wb") as ff:
             ff.write(f.read())
         img = imread(fname)
-        os.remove(fname)
+        #os.remove(fname)
+        try:
+            os.remove(fname)
+        except PermissionError:
+            pass  # Windows 下文件可能仍被占用，忽略删除失败即可
         return img
     except urllib.error.URLError as e:
         print("URL Error: ", e.reason, url)
