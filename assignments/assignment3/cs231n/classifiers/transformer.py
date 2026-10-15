@@ -89,6 +89,22 @@ class CaptioningTransformer(nn.Module):
         #     along with the tgt_mask. Project the output to scores per token      #
         ############################################################################
 
+        # (N, T) -> (N, T, W)
+        tgt = self.embedding(captions)
+        tgt = self.positional_encoding(tgt)
+
+        # 图特征投影到词维度(N,D)->(N,W)
+        memory = self.visual_projection(features)
+        # 交叉注意力中的图像记忆序列长度为 1 (N,1,W)
+        memory = memory.unsqueeze(1)
+
+        #下三角矩阵，前面的词不能看见后面的
+        tgt_mask = torch.tril(torch.ones(T, T, device=captions.device)).bool()
+
+        output = self.transformer(tgt, memory, tgt_mask=tgt_mask)
+
+        # (N, T, W) -> (N, T, V)
+        scores = self.output(output)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -120,7 +136,8 @@ class CaptioningTransformer(nn.Module):
             partial_caption = partial_caption.unsqueeze(1)
 
             for t in range(max_length):
-
+                # forward() 会为输入序列中的每个位置输出分数，
+                # 但生成新词时，只需要最后一个位置的结果。
                 # Predict the next token (ignoring all other time steps).
                 output_logits = self.forward(features, partial_caption)
                 output_logits = output_logits[:, -1, :]
@@ -241,6 +258,12 @@ class VisionTransformer(nn.Module):
         # 5. Feed it through a linear layer to produce class logits.              #
         ############################################################################
 
+        x = self.patch_embed(x)
+        x = self.positional_encoding(x)
+        x = self.transformer(x)
+        # 把每张图片的全部 Patch 特征合并成一个图像特征向量。
+        x = torch.mean(x,dim=1)
+        logits = self.head(x)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
