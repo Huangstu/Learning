@@ -37,6 +37,12 @@ class PositionalEncoding(nn.Module):
         # less than 5 lines of code.                                               #
         ############################################################################
 
+        positions = torch.arange(max_len).unsqueeze(1)
+        div_term = 10000 ** (torch.arange(0, embed_dim, 2) / embed_dim)
+
+        pe[0, :, 0::2] = torch.sin(positions / div_term)
+        pe[0, :, 1::2] = torch.cos(positions / div_term)
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -64,6 +70,12 @@ class PositionalEncoding(nn.Module):
         # appropriate ones to the input sequence. Don't forget to apply dropout    #
         # afterward. This should only take a few lines of code.                    #
         ############################################################################
+
+        N, S, D = x.shape
+        output = torch.empty((N,S,D))
+        
+        output = x + self.pe[:, :S, :]
+        output = self.dropout(output)
 
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -105,6 +117,8 @@ class MultiHeadAttention(nn.Module):
         # outputs relative to the autograder). Note that the layers use a bias
         # term, but this isn't strictly necessary (and varies by
         # implementation).
+
+        # 先保持维度，后续分成多个头
         self.key = nn.Linear(embed_dim, embed_dim)
         self.query = nn.Linear(embed_dim, embed_dim)
         self.value = nn.Linear(embed_dim, embed_dim)
@@ -155,6 +169,38 @@ class MultiHeadAttention(nn.Module):
         #     prevent a value from influencing output. Specifically, the PyTorch   #
         #     function masked_fill may come in handy.                              #
         ############################################################################
+
+        H = self.n_head
+        D = self.head_dim
+        # 线性投影
+        q = self.query(query)
+        k = self.key(key)
+        v = self.value(value)
+
+        # (N,S,H,D) ->(N,H,S,D)
+        q = q.reshape(N, S, H, D).transpose(1, 2)
+        k = k.reshape(N, T, H, D).transpose(1, 2)
+        v = v.reshape(N, T, H, D).transpose(1, 2)
+
+        #(N,H,S,D)*(N,H,D,T)->(N,H,S,T)
+        #每个分数对应一个 Query 位置与一个 Key 位置之间的匹配程度。
+        scores = torch.matmul(q, k.transpose(-2, -1))
+        scores = scores / (D ** 0.5)
+
+        if attn_mask is not None:
+            scores = scores.masked_fill(
+                attn_mask[None, None, :, :] == 0,
+                float("-inf")
+            )
+
+        attn_weights = torch.softmax(scores, dim=-1)
+        # dropout(softmax())
+        attn_weights = self.attn_drop(attn_weights)
+
+        out = torch.matmul(attn_weights, v)
+
+        out = out.transpose(1, 2).contiguous().reshape(N, S, E)
+        output = self.proj(out)
 
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -217,6 +263,7 @@ class TransformerDecoderLayer(nn.Module):
         self.cross_attn = MultiHeadAttention(input_dim, num_heads, dropout)
         self.ffn = FeedForwardNetwork(input_dim, dim_feedforward, dropout)
 
+        # 每一个层都有自己的归一化参数需要写学习
         self.norm_self = nn.LayerNorm(input_dim)
         self.norm_cross = nn.LayerNorm(input_dim)
         self.norm_ffn = nn.LayerNorm(input_dim)
@@ -239,11 +286,15 @@ class TransformerDecoderLayer(nn.Module):
         - out: the Transformer features, of shape (N, T, W)
         """
 
+        # 建立目标文本tgt内部的依赖关系（上下文信息）
         # Self-attention block (reference implementation)
         shortcut = tgt
         tgt = self.self_attn(query=tgt, key=tgt, value=tgt, attn_mask=tgt_mask)
         tgt = self.dropout_self(tgt)
+
+        # 残差连接
         tgt = tgt + shortcut
+
         tgt = self.norm_self(tgt)
 
         ############################################################################
@@ -253,6 +304,25 @@ class TransformerDecoderLayer(nn.Module):
         # same structure as self-attention implemented just above.                 #
         ############################################################################
 
+        # 当前文本需要从图像memory中获取哪些信息
+        # Cross-attention block
+        shortcut = tgt
+        tgt = self.cross_attn(
+            query=tgt,
+            key=memory,
+            value=memory
+        )
+        tgt = self.dropout_cross(tgt)
+        tgt = tgt + shortcut
+        tgt = self.norm_cross(tgt)
+
+        # 增强特征表达能力
+        # Feedforward block
+        shortcut = tgt
+        tgt = self.ffn(tgt)
+        tgt = self.dropout_ffn(tgt)
+        tgt = tgt + shortcut
+        tgt = self.norm_ffn(tgt)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -311,7 +381,28 @@ class PatchEmbedding(nn.Module):
         # step. Once the patches are flattened, embed them into latent vectors     #
         # using the projection layer.                                              #
         ############################################################################
+        x = x.reshape(
+                N,
+                C,
+                H // self.patch_size,
+                self.patch_size,
+                W // self.patch_size,
+                self.patch_size
+            )
 
+        # 交换维度
+        #(N, C, H_patches, patch_h, W_patches, patch_w)->
+        #(N, H_patches, W_patches, C, patch_h, patch_w)
+        x = x.permute(0, 2, 4, 1, 3, 5)
+
+        x = x.reshape(
+            N,
+            self.num_patches,
+            self.patch_dim
+        )
+        
+        # -> (N, num_patches, embed_dim)
+        out = self.proj(x)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -360,6 +451,17 @@ class TransformerEncoderLayer(nn.Module):
         # by a feedforward block. This code will be very similar to decoder layer. #
         ############################################################################
 
+        # 1. Self-Attention
+        attn_out = self.self_attn(src, src, src, attn_mask=src_mask)
+
+        # 2. Residual Connection + Layer Normalization
+        src = self.norm_self(src + self.dropout_self(attn_out))
+
+        # 3. Feed-Forward Network
+        ffn_out = self.ffn(src)
+
+        # 4. Residual Connection + Layer Normalization
+        src = self.norm_ffn(src + self.dropout_ffn(ffn_out))
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
