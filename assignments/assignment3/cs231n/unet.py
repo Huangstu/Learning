@@ -128,6 +128,7 @@ class Unet(nn.Module):
     ):
         super().__init__()
 
+        #把 RGB 图片转换成特征
         self.init_conv = nn.Conv2d(channels, dim, 3, padding=1)
         self.channels = channels
 
@@ -180,7 +181,11 @@ class Unet(nn.Module):
             # Make sure to exactly follow this structure of ModuleList in order to
             # load a pretrained checkpoint.
             ##################################################################
-
+            down_block = nn.ModuleList([
+                ResnetBlock(dim_in, dim_in, context_dim=context_dim),
+                ResnetBlock(dim_in, dim_in, context_dim=context_dim),
+                Downsample(dim_in, dim_out),
+            ])
             ##################################################################
             self.downs.append(down_block)
 
@@ -204,6 +209,12 @@ class Unet(nn.Module):
             # Don't forget to account for the skip connections by having 2 x dim_out
             # channels at the input of both ResnetBlocks.
             ##################################################################
+            up_block = nn.ModuleList([
+                Upsample(dim_in, dim_out),
+                # 拼接 skip connection 后，输入通道数为 2 * dim_out
+                ResnetBlock(2 * dim_out, dim_out, context_dim=context_dim),
+                ResnetBlock(2 * dim_out, dim_out, context_dim=context_dim),
+            ])
 
             self.ups.append(up_block)
             ##################################################################
@@ -226,7 +237,17 @@ class Unet(nn.Module):
         # You will have to call self.forward two times.
         # For unconditional sampling, pass None in`text_emb`.
         ##################################################################
+        # 有条件预测
+        # 把带噪图片 x、时间步 time 和文本条件传入 U-Net
+        pred_cond = self.forward(x, time, model_kwargs)
 
+        # 无条件预测
+        model_kwargs_uncond = copy.deepcopy(model_kwargs)
+        model_kwargs_uncond["text_emb"] = None
+        pred_uncond = self.forward(x, time, model_kwargs_uncond)
+
+        # Classifier-free guidance
+        x = (cfg_scale + 1) * pred_cond - cfg_scale * pred_uncond
         ##################################################################
 
         return x
@@ -281,6 +302,36 @@ class Unet(nn.Module):
         #      skip connection from the downsampling path.
         #    - Make sure to pass the context to each ResNet block.
         ##################################################################
+        # 1. Downsampling
+        skips = []
+
+        for resnet1, resnet2, downsample in self.downs:
+            x = resnet1(x, context)
+            skips.append(x)
+
+            x = resnet2(x, context)
+            skips.append(x)
+
+            x = downsample(x)
+
+        # 2. Middle
+        x = self.mid_block1(x, context)
+        x = self.mid_block2(x, context)
+
+        # 3. Upsampling
+        for upsample, resnet1, resnet2 in self.ups:
+            x = upsample(x)
+
+            # First skip connection
+            skip = skips.pop()
+            x = torch.cat((x, skip), dim=1)
+            x = resnet1(x, context)
+
+            # Second skip connection
+            skip = skips.pop()
+            x = torch.cat((x, skip), dim=1)
+            x = resnet2(x, context)
+
 
         ##################################################################
 
