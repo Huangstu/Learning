@@ -16,3 +16,5 @@ ignore/
 coco_captioning/
 *.zip
 .ipynb_checkpoints/
+*.pt
+*.pth
