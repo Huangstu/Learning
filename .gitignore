@@ -18,3 +18,4 @@ coco_captioning/
 .ipynb_checkpoints/
 *.pt
 *.pth
+*.html
