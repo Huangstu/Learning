@@ -2,7 +2,7 @@ import torch
 import os
 from PIL import Image
 from torchvision import transforms
-from train_cifar10 import SimpleCNN  # 从之前的代码中导入模型类
+from codes.pytorch.train_cifar10 import SimpleCNN  # 从之前的代码中导入模型类
 
 # 1. 定义 CIFAR-10 的10个类别标签,按顺序给出
 classes = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
