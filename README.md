@@ -8,8 +8,3 @@
 conda env create -f environment.yml
 ```
 
-### 运行测试
-
-```bash
-python pytorch/testfile/available.py
-```
