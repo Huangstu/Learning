@@ -20,6 +20,7 @@ coco_captioning/
 *.pth
 *.html
 /codes/pytorch/Sonar-OTLR/external/
+/codes/pytorch/Sonar-OTLR/experiments/
 /codes/pytorch/Sonar-OTLR/checkpoints/
 /codes/pytorch/Sonar-OTLR/paper/
 /codes/pytorch/Sonar-OTLR/notes/
