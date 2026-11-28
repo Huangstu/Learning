@@ -1,0 +1,64 @@
+{
+  "data": "data/raw/NKSID",
+  "weights": "checkpoints/pretrained/resnet18-f37072fd.pth",
+  "output": "outputs/nksid_large_123",
+  "checkpoints": "checkpoints/nksid_large_123",
+  "seed": 42,
+  "size": 96,
+  "batch": 24,
+  "epochs": 8,
+  "lr": 0.0003,
+  "tail_minimum": 16,
+  "class_caps": {
+    "floats": 100000,
+    "tire": 100000,
+    "cylinder": 100000,
+    "big_propeller": 100000
+  },
+  "variants": [
+    {
+      "name": "baseline",
+      "sapfs": false,
+      "ptmcl": false
+    },
+    {
+      "name": "reference",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": true
+    },
+    {
+      "name": "bounds_0.1_0.8",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.1,
+      "r_max": 0.8
+    },
+    {
+      "name": "momentum_0.99",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "momentum": 0.99
+    },
+    {
+      "name": "weight_1",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "weight": 1
+    },
+    {
+      "name": "rho_0.5",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "rho": 0.5
+    }
+  ],
+  "evaluation_steps": [
+    220
+  ],
+  "train_seed": 123
+}

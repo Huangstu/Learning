@@ -1,0 +1,15 @@
+{
+  "status": "planning_only_not_runnable",
+  "dataset": "OpenSID",
+  "raw_root": "data/raw/OpenSID",
+  "samples_root": "data/samples/OpenSID",
+  "official_split_table": "data/splits/official/open_split_class_table.xlsx",
+  "expected_images": 9194,
+  "expected_classes": 8,
+  "paper_known_class_counts": [2, 3, 5, 7],
+  "paper_test_class_count": 8,
+  "paper_openness": [0.5, 0.39, 0.21, 0.06],
+  "paper_random_class_splits": 5,
+  "paper_cv_folds": 5,
+  "unresolved": ["full_dataset_download", "image_level_fold_assignments", "official_algorithm_source", "preprocessing_and_training_configuration"]
+}
