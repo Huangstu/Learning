@@ -1,0 +1,171 @@
+{
+  "data": "data/raw/NKSID",
+  "weights": "checkpoints/pretrained/resnet18-f37072fd.pth",
+  "output": "outputs/nksid_sweep",
+  "checkpoints": "checkpoints/nksid_sweep",
+  "seed": 42,
+  "size": 96,
+  "batch": 24,
+  "epochs": 10,
+  "lr": 0.0003,
+  "tail_minimum": 16,
+  "class_caps": {
+    "floats": 160,
+    "tire": 150,
+    "cylinder": 125,
+    "big_propeller": 95
+  },
+  "variants": [
+    {
+      "name": "baseline",
+      "sapfs": false,
+      "ptmcl": false
+    },
+    {
+      "name": "reference",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": true
+    },
+    {
+      "name": "bounds_0.1_0.6",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.1,
+      "r_max": 0.6
+    },
+    {
+      "name": "bounds_0.1_0.8",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.1,
+      "r_max": 0.8
+    },
+    {
+      "name": "bounds_0.2_0.6",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.2,
+      "r_max": 0.6
+    },
+    {
+      "name": "bounds_0.2_0.9",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.2,
+      "r_max": 0.9
+    },
+    {
+      "name": "bounds_0.3_0.6",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.3,
+      "r_max": 0.6
+    },
+    {
+      "name": "bounds_0.3_0.8",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.3,
+      "r_max": 0.8
+    },
+    {
+      "name": "bounds_0.4_0.8",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "r_min": 0.4,
+      "r_max": 0.8
+    },
+    {
+      "name": "momentum_0",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "momentum": 0
+    },
+    {
+      "name": "momentum_0.5",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "momentum": 0.5
+    },
+    {
+      "name": "momentum_0.7",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "momentum": 0.7
+    },
+    {
+      "name": "momentum_0.99",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "momentum": 0.99
+    },
+    {
+      "name": "weight_0.5",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "weight": 0.5
+    },
+    {
+      "name": "weight_1",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "weight": 1
+    },
+    {
+      "name": "weight_2",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "weight": 2
+    },
+    {
+      "name": "weight_4",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "weight": 4
+    },
+    {
+      "name": "rho_0.1",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "rho": 0.1
+    },
+    {
+      "name": "rho_0.3",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "rho": 0.3
+    },
+    {
+      "name": "rho_0.4",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "rho": 0.4
+    },
+    {
+      "name": "rho_0.5",
+      "sapfs": true,
+      "ptmcl": true,
+      "save_checkpoint": false,
+      "rho": 0.5
+    }
+  ]
+}

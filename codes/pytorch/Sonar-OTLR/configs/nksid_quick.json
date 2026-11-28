@@ -1,0 +1,12 @@
+{
+  "data": "data/raw/NKSID",
+  "weights": "checkpoints/pretrained/resnet18-f37072fd.pth",
+  "output": "outputs/nksid_quick",
+  "checkpoints": "checkpoints/nksid_quick",
+  "seed": 42,
+  "size": 96,
+  "batch": 24,
+  "epochs": 5,
+  "lr": 0.0003,
+  "tail_minimum": 16
+}

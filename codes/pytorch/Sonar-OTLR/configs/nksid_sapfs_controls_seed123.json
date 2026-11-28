@@ -1,0 +1,47 @@
+{
+  "data": "data/raw/NKSID",
+  "weights": "checkpoints/pretrained/resnet18-f37072fd.pth",
+  "output": "outputs/nksid_sapfs_controls_seed123",
+  "checkpoints": "checkpoints/nksid_sweep",
+  "seed": 42,
+  "size": 96,
+  "batch": 24,
+  "epochs": 10,
+  "lr": 0.0003,
+  "tail_minimum": 16,
+  "class_caps": {
+    "floats": 160,
+    "tire": 150,
+    "cylinder": 125,
+    "big_propeller": 95
+  },
+  "variants": [
+    {
+      "name": "gini",
+      "sapfs": true,
+      "ptmcl": false
+    },
+    {
+      "name": "fixed_20",
+      "sapfs": true,
+      "ptmcl": false,
+      "r_min": 0.2,
+      "r_max": 0.2
+    },
+    {
+      "name": "fixed_50",
+      "sapfs": true,
+      "ptmcl": false,
+      "r_min": 0.5,
+      "r_max": 0.5
+    },
+    {
+      "name": "entropy",
+      "sapfs": true,
+      "ptmcl": false,
+      "strategy": "entropy"
+    }
+  ],
+  "save_checkpoints": false,
+  "train_seed": 123
+}

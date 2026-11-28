@@ -19,3 +19,14 @@ coco_captioning/
 *.pt
 *.pth
 *.html
+/codes/pytorch/Sonar-OTLR/external/
+/codes/pytorch/Sonar-OTLR/checkpoints/
+/codes/pytorch/Sonar-OTLR/paper/
+/codes/pytorch/Sonar-OTLR/notes/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_large_123/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_large_42/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_quick/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_sapfs_controls/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_sapfs_controls_seed123/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_sweep/
+/codes/pytorch/Sonar-OTLR/outputs/nksid_sweep_seed123/
